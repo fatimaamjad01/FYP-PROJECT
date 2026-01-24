@@ -55,6 +55,13 @@ prisma db push
 ## Step 6: Run your application
 
 ```bash
+./run.sh
+```
+
+Or manually:
+
+```bash
+source .venv/bin/activate
 uvicorn main:app --reload
 ```
 

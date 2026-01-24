@@ -19,8 +19,15 @@ if ! grep -q "DATABASE_URL" .env; then
     exit 1
 fi
 
+# Create virtual environment if it doesn't exist
+if [ ! -d ".venv" ]; then
+    echo "📦 Creating virtual environment..."
+    uv venv
+fi
+
 echo "📦 Installing Python dependencies..."
-pip install --system -r requirements.txt
+source .venv/bin/activate
+uv pip install -r requirements.txt
 
 echo "🔧 Generating Prisma Client..."
 npx prisma generate

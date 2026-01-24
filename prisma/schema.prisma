@@ -16,3 +16,14 @@ model Student {
 
   @@map("Student_Table")
 }
+model Admin {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+  email      String   @unique
+  password   String
+  is_super   Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("admin_Table")
+}

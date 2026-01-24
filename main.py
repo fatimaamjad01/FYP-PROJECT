@@ -1,13 +1,25 @@
 from fastapi import FastAPI, HTTPException
 from prisma import Prisma
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 
-app = FastAPI()
 db = Prisma()
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await db.connect()
+    yield
+    # Shutdown
+    await db.disconnect()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
 class StudentCreate(BaseModel):
-    name: str
+    first_name: str
     email: str
 
 
@@ -19,12 +31,9 @@ async def root():
 @app.post("/students")
 async def create_student(student: StudentCreate):
     try:
-        if not db.is_connected():
-            await db.connect()
-
         new_student = await db.student.create(
             data={
-                "name": student.name,
+                "first_name": student.first_name,
                 "email": student.email,
             }
         )
@@ -38,9 +47,6 @@ async def create_student(student: StudentCreate):
 @app.get("/students")
 async def get_students():
     try:
-        if not db.is_connected():
-            await db.connect()
-
         students = await db.student.find_many()
         return students
 

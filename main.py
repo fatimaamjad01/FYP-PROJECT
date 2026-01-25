@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from prisma import Prisma
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+from typing import Optional
 
 db = Prisma()
 
@@ -20,7 +21,16 @@ app = FastAPI(lifespan=lifespan)
 
 class StudentCreate(BaseModel):
     first_name: str
+    last_name: str
     email: str
+    password: str
+    phone_number: Optional[str] = None
+    gender: Optional[str] = None
+    country: Optional[str] = None
+    city: Optional[str] = None
+    bio: Optional[str] = None
+    profile_image: Optional[str] = None
+    future_goal: Optional[str] = None
 
 
 @app.get("/")
@@ -34,7 +44,16 @@ async def create_student(student: StudentCreate):
         new_student = await db.student.create(
             data={
                 "first_name": student.first_name,
+                "last_name": student.last_name,
                 "email": student.email,
+                "password": student.password,
+                "phone_number": student.phone_number,
+                "gender": student.gender,
+                "country": student.country,
+                "city": student.city,
+                "bio": student.bio,
+                "profile_image": student.profile_image,
+                "future_goal": student.future_goal,
             }
         )
         return new_student

@@ -56,10 +56,12 @@ Prisma CLI: 6.19.2
 
 ### System Requirements
 
-- **OS**: Linux (Ubuntu 20.04+ recommended) / macOS / Windows with WSL2
-- **Python**: 3.12.x (3.12.3 tested)
+- **OS**: Linux (Ubuntu 20.04+) / macOS / **Windows 10/11 (native or WSL2)**
+- **Python**: 3.12.x (3.12.3 tested and recommended)
 - **Node.js**: 18.x or higher (v22.17.1 tested)
 - **Database**: PostgreSQL 13+ (Supabase hosted)
+
+**✅ Windows Native Support**: This project works on native Windows (PowerShell/CMD) without WSL2. However, WSL2 is recommended for better compatibility with the deployment scripts.
 
 ## 🚀 Installation & Setup
 
@@ -75,7 +77,13 @@ cd FYP-PROJECT
 #### Create Virtual Environment
 
 ```bash
+# Linux/macOS/Windows
 python -m venv .venv
+
+# Or on Windows, you might need:
+python3 -m venv .venv
+# Or if Python is in PATH:
+py -m venv .venv
 ```
 
 #### Activate Virtual Environment
@@ -84,8 +92,20 @@ python -m venv .venv
 # Linux/macOS
 source .venv/bin/activate
 
-# Windows
-.venv\Scripts\activate
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Windows (CMD)
+.venv\Scripts\activate.bat
+
+# Windows (Git Bash)
+source .venv/Scripts/activate
+```
+
+**Note**: On Windows, if you get a script execution error, run this in PowerShell as Administrator:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
 #### Install Requirements
@@ -117,27 +137,48 @@ DIRECT_URL="postgresql://postgres.xxxxx:password@aws-1-ap-south-1.pooler.supabas
 ### 5. Generate Prisma Client
 
 ```bash
+# Linux/macOS
 .venv/bin/prisma generate
+
+# Windows (PowerShell/CMD)
+.venv\Scripts\prisma generate
+
+# Or activate venv first, then just:
+prisma generate
 ```
 
 ### 6. Push Database Schema to Supabase
 
 ```bash
+# Linux/macOS
 .venv/bin/prisma db push
+
+# Windows (PowerShell/CMD)
+.venv\Scripts\prisma db push
+
+# Or with activated venv:
+prisma db push
 ```
 
 ### 7. Run the Application
 
 ```bash
+
+# Linux/macOS
+
 .venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Windows (PowerShell/CMD)
+
+.venv\Scripts\uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Or with activated venv (all platforms):
+
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
 ```
 
-Or use the deploy script:
-
-```bash
-chmod +x deploy-to-supabase.sh
-./deploy-to-supabase.sh
-```
+**Note**: The deploy script (`deploy-to-supabase.sh`) is a bash script and requires WSL2 or Git Bash on Windows.
 
 ## 📚 API Endpoints
 
@@ -158,20 +199,22 @@ chmod +x deploy-to-supabase.sh
 ## 📁 Project Structure
 
 ```
+
 FYP-PROJECT/
-├── .env                    # Environment variables (not in git)
-├── .gitignore              # Git ignore rules
-├── .venv/                  # Python virtual environment
-├── main.py                 # FastAPI application entry point
-├── requirements.txt        # Python dependencies
-├── package.json            # Node.js dependencies (Prisma CLI)
-├── package-lock.json       # Node.js lock file
-├── node_modules/           # Node.js packages
+├── .env # Environment variables (not in git)
+├── .gitignore # Git ignore rules
+├── .venv/ # Python virtual environment
+├── main.py # FastAPI application entry point
+├── requirements.txt # Python dependencies
+├── package.json # Node.js dependencies (Prisma CLI)
+├── package-lock.json # Node.js lock file
+├── node_modules/ # Node.js packages
 ├── prisma/
-│   └── schema.prisma       # Database schema definition
-├── deploy-to-supabase.sh   # Deployment script
-├── SUPABASE_SETUP.md       # Supabase setup guide
-└── README.md               # This file
+│ └── schema.prisma # Database schema definition
+├── deploy-to-supabase.sh # Deployment script
+├── SUPABASE_SETUP.md # Supabase setup guide
+└── README.md # This file
+
 ```
 
 ## 🔧 Development
@@ -179,7 +222,12 @@ FYP-PROJECT/
 ### Running in Development Mode
 
 ```bash
-.venv/bin/uvicorn main:app --reload
+# After activating virtual environment (recommended)
+uvicorn main:app --reload
+
+# Or without activating venv:
+# Linux/macOS: .venv/bin/uvicorn main:app --reload
+# Windows: .venv\Scripts\uvicorn main:app --reload
 ```
 
 The `--reload` flag enables hot-reloading during development.
@@ -196,19 +244,24 @@ Once the server is running, visit:
 #### View Current Schema
 
 ```bash
-.venv/bin/prisma db pull
+# With activated venv (all platforms)
+prisma db pull
+
+# Or: .venv/bin/prisma (Linux/macOS) or .venv\Scripts\prisma (Windows)
 ```
 
 #### Push Schema Changes
 
 ```bash
-.venv/bin/prisma db push
+# With activated venv (all platforms)
+prisma db push
 ```
 
 #### Reset Database (⚠️ Destructive)
 
 ```bash
-.venv/bin/prisma db push --force-reset
+# With activated venv (all platforms)
+prisma db push --force-reset
 ```
 
 ## 📝 Database Models
@@ -240,15 +293,37 @@ See `prisma/schema.prisma` for complete schema definitions.
 ### Virtual Environment Not Found
 
 ```bash
+# Create venv
 python -m venv .venv
+
+# Activate (Linux/macOS)
 source .venv/bin/activate
+
+# Activate (Windows PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
 ### Prisma Client Not Generated
 
 ```bash
-.venv/bin/prisma generate
+# With activated venv
+prisma generate
+
+# Or direct call:
+# Linux/macOS: .venv/bin/prisma generate
+# Windows: .venv\Scripts\prisma generate
+```
+
+### PowerShell Execution Policy Error (Windows)
+
+If you see "cannot be loaded because running scripts is disabled":
+
+```powershell
+# Run in PowerShell as Administrator
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
 ### Database Connection Errors
@@ -261,11 +336,15 @@ pip install -r requirements.txt
 ### Port Already in Use
 
 ```bash
-# Kill process on port 8000
+# Linux/macOS - Kill process on port 8000
 lsof -ti:8000 | xargs kill -9
 
-# Or use a different port
-.venv/bin/uvicorn main:app --reload --port 8001
+# Windows - Find and kill process
+netstat -ano | findstr :8000
+taskkill /PID <PID_NUMBER> /F
+
+# Or just use a different port (all platforms)
+uvicorn main:app --reload --port 8001
 ```
 
 ## 📦 Dependency Management

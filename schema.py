@@ -37,11 +37,11 @@ class Student:
 class Query:
     @strawberry.field
     async def get_student(self, id: strawberry.ID) -> Student:
-        student = await db.student.find_unique(where={"id": id})
+        student = await db.student.find_unique(where={"id": int(id)})
         
         if student is None:
             raise Exception(f"Student with ID {id} not found")
-    
+        
         return student
 
     @strawberry.field

@@ -1,5 +1,25 @@
-fastapi==0.115.0
-uvicorn==0.32.0
-prisma==0.15.0
-python-dotenv==1.0.1
-pydantic==2.10.0
+# ========================================
+# FYP Project - Python Dependencies
+# ========================================
+# Python Version: 3.12.3
+# GraphQL API with FastAPI + Strawberry
+# ========================================
+
+# Web Framework
+fastapi==0.115.0          # Modern web framework for building APIs
+uvicorn==0.32.0           # Lightning-fast ASGI server
+
+# GraphQL
+strawberry-graphql[fastapi]==0.289.8  # GraphQL library for Python with FastAPI integration
+
+# Database & ORM
+prisma==0.15.0            # Next-generation Python ORM with type safety
+
+# Data Validation & Serialization
+pydantic==2.10.0          # Data validation using Python type annotations
+
+# Security & Authentication
+bcrypt==4.2.1             # Password hashing
+
+# Configuration Management
+python-dotenv==1.0.1      # Load environment variables from .env file

@@ -1,12 +1,31 @@
 import strawberry
 from prisma import Prisma
 from typing import Optional
+from fastapi import HTTPException
 import typing
 import bcrypt
+import re
+
 
 # Initialize Prisma client
 db = Prisma()
 
+email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+def validate_password(password: str):
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    # You can add more complex rules for password strength here, such as checking for numbers, special chars, etc.
+    if not re.search(r"\d", password):
+        raise ValueError("Password must contain at least one digit")
+    if not re.search(r"[A-Za-z]", password):
+        raise ValueError("Password must contain at least one letter")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        raise ValueError("Password must contain at least one special character")
+    # Email validation function
+def validate_email(email: str):
+    if not re.match(email_regex, email):
+        raise ValueError("Invalid email format")
+    
 
 
 @strawberry.type
@@ -59,20 +78,51 @@ class StudentInput:
     last_name: str
     email: str
     password: str
+    phone_number: Optional[str] = None
+    dob: Optional[str] = None
+    gender: Optional[str] = None
+    country: Optional[str] = None   
+    city: Optional[str] = None
+    bio: Optional[str] = None
+    profile_image: Optional[str] = None
+    future_goal: Optional[str] = None
+
 
 
 @strawberry.type
 class Mutation:
     @strawberry.mutation
     async def update_student(self, id: int, input: StudentInput) -> Student:
+        try:
+            validate_email(input.email)
+            # Validate password format (only validate if password is provided)
+            if input.password:
+                validate_password(input.password)
+                hashed_password = bcrypt.hashpw(input.password.encode('utf-8'), bcrypt.gensalt())
+            else:
+                hashed_password = None
+            # Fetch the existing student to get the current password if not updating
+            existing_student = await db.student.find_unique(where={"id": id})
+            if not existing_student:
+                raise HTTPException(status_code=404, detail=f"Student with ID {id} not found")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
         updated_student = await db.student.update(
             where={"id": id},
             data={
-                "first_name": input.first_name,
-                "last_name": input.last_name,
-                "email": input.email
-                
-            }
+                "first_name": input.first_name if hasattr(input, "first_name") else existing_student.first_name,
+                "last_name": input.last_name if hasattr(input, "last_name") else existing_student.last_name,
+                "email": input.email if hasattr(input, "email") else existing_student.email,
+                "dob": input.dob if hasattr(input, "dob") else existing_student.dob,
+                "phone_number": input.phone_number if hasattr(input, "phone_number") else existing_student.phone_number,
+                "gender": input.gender if hasattr(input, "gender") else existing_student.gender,
+                "country": input.country if hasattr(input, "country") else existing_student.country,
+                "city": input.city if hasattr(input, "city") else existing_student.city,
+                "bio": input.bio if hasattr(input, "bio") else existing_student.bio,
+                "profile_image": input.profile_image if hasattr(input, "profile_image") else existing_student.profile_image,
+                "future_goal": input.future_goal if hasattr(input, "future_goal") else existing_student.future_goal,
+                "password": hashed_password.decode('utf-8') if hashed_password else existing_student.password,
+        }
                 )
         return updated_student
         
@@ -81,8 +131,8 @@ class Mutation:
     async def register_student(self, input: StudentInput) -> Student:
         try:
             # Validate password (minimum 8 characters as an example)
-            if len(input.password) < 8:
-                raise ValueError("Password must be at least 8 characters long")
+            validate_password(input.password)
+            validate_email(input.email)
 
             hashed_password = bcrypt.hashpw(input.password.encode('utf-8'), bcrypt.gensalt())
             existing_student = await db.student.find_unique(where={"email": input.email})
@@ -94,14 +144,14 @@ class Mutation:
                     "first_name": input.first_name,
                     "last_name": input.last_name,
                     "email": input.email,
-                    "password": hashed_password.decode('utf-8')
+                    "password": hashed_password.decode('utf-8'),
                 }
             )
             print(registered_student)
             return registered_student
         except ValueError as e:
             # Handle validation errors (like password length or duplicate email)
-            raise Exception(f"Validation error: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
         except Exception as e:
             # Catch any other errors
-            raise Exception(f"An error occurred: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")

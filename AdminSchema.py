@@ -69,7 +69,7 @@ class Query:
             try:
                 await db.admin.update(
                     where={"admin_id": admin.admin_id},
-                    data={"last_login": datetime.utcnow().isoformat()}
+                    data={"last_login": datetime.datetime.now(datetime.timezone.utc).isoformat()}
                 )
             except Exception:
                 raise HTTPException(status_code=400, detail=f"Error updating last_login:{str(e)}")

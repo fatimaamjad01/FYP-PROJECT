@@ -1,10 +1,32 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from strawberry.fastapi import GraphQLRouter
 import strawberry
-from schema import Query as StudentQuery, Mutation as StudentMutation, db as student_db, Student as StudentType, StudentInput as StudentInputType
+import jwt
+from schema import Query as StudentQuery, Mutation as StudentMutation, db as student_db, Student as StudentType, StudentInput as StudentInputType, LoginResponse as StudentLoginResponse, SECRET_KEY, ALGORITHM
 from AdminSchema import Query as AdminQuery, Mutation as AdminMutation, db as admin_db, Admin as AdminType, AdminInput as AdminInputType
 from contextlib import asynccontextmanager
 import typing
+
+security = HTTPBearer()
+
+# Token verification function
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
 # Use the lifespan context manager for startup and shutdown events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,7 +71,7 @@ class Mutation:
         return await StudentMutation().update_student(id, input)
 
     @strawberry.mutation
-    async def login_student(self, email: str, password: str) -> StudentType:
+    async def login_student(self, email: str, password: str) -> StudentLoginResponse:
         return await StudentMutation().login_student(email, password)
 
     # Admin mutations
@@ -69,3 +91,11 @@ graphql_app = GraphQLRouter(schema)
 
 # Include the GraphQL route in the FastAPI app
 app.include_router(graphql_app, prefix="/graphql")
+
+# Optional: Add a protected endpoint example
+@app.get("/protected")
+async def protected_route(token_data: dict = Depends(verify_token)):
+    return {
+        "message": "This is a protected route",
+        "user": token_data
+    }

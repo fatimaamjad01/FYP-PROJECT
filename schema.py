@@ -6,10 +6,16 @@ import typing
 import bcrypt
 import re
 import datetime
+import jwt
+from datetime import timedelta
 
 
 # Initialize Prisma client
 db = Prisma()
+# JWT Configuration
+SECRET_KEY = "skill_shift fyp project"  # Change this to a secure secret key
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
 email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
 def validate_password(password: str):
@@ -26,6 +32,15 @@ def validate_password(password: str):
 def validate_email(email: str):
     if not re.match(email_regex, email):
         raise ValueError("Invalid email format")
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
     
 
 
@@ -50,6 +65,18 @@ class Student:
     password_last_change: Optional[str]
     created_at: str
     updated_at: str
+@strawberry.type
+class LoginResponse:
+    token: str
+    user: "UserInfo"
+
+@strawberry.type
+class UserInfo:
+    id: int
+    first_name: str
+    last_name: str
+    email: str
+    profile_image: Optional[str]
     
 
 
@@ -158,7 +185,7 @@ class Mutation:
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     
     @strawberry.mutation
-    async def login_student(self, email: str, password: str) -> Student:
+    async def login_student(self, email: str, password: str) -> LoginResponse:
         try:
             student = await db.student.find_unique(where={"email": email})
             if not student:
@@ -170,11 +197,28 @@ class Mutation:
             try:
                 await db.student.update(
                     where={"id": student.id},
-                    data={"last_login": datetime.utcnow().isoformat()}
+                    data={"last_login": datetime.datetime.now(datetime.timezone.utc).isoformat()}
                 )
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Error updating last_login:{str(e)}")
-            return student
-        
+            
+            token_data = {
+                "sub": str(student.id),
+                "email": student.email,
+                "first_name": student.first_name,
+                "last_name": student.last_name
+            }
+            access_token = create_access_token(data=token_data)
+            
+            # Create user info object
+            user_info = UserInfo(
+                id=student.id,
+                first_name=student.first_name,
+                last_name=student.last_name,
+                email=student.email,
+                profile_image=student.profile_image
+            )
+            
+            return LoginResponse(token=access_token, user=user_info)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")

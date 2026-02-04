@@ -1,23 +1,32 @@
 from fastapi import FastAPI
 from strawberry.fastapi import GraphQLRouter
 import strawberry
-from schema import Query, Mutation, db  # Import your Query, Mutation, and db (Prisma)
+from schema import Query as StudentQuery, Mutation as StudentMutation, db as student_db  # Import your student Query, Mutation, and db
+from AdminSchema import Query as AdminQuery, Mutation as AdminMutation, db as admin_db
 from contextlib import asynccontextmanager
 # Use the lifespan context manager for startup and shutdown events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Connect to the database when the app starts
-    await db.connect()
+    await student_db.connect()
+    await admin_db.connect()
 
     # Disconnect from the database when the app shuts down
     yield
 
-    await db.disconnect()
+    await student_db.disconnect()
+    await admin_db.disconnect()
 
 
 app = FastAPI(lifespan=lifespan)
 
-# Create the GraphQL schema using Query and Mutation
+class Query(StudentQuery, AdminQuery):
+    pass
+
+class Mutation(StudentMutation, AdminMutation):
+    pass
+
+# Create the GraphQL schema using combined Query and Mutation
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 
 # Create the GraphQL router

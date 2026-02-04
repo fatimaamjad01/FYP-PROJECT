@@ -4,7 +4,14 @@ from strawberry.fastapi import GraphQLRouter
 import strawberry
 import jwt
 from schema import Query as StudentQuery, Mutation as StudentMutation, db as student_db, Student as StudentType, StudentInput as StudentInputType, LoginResponse as StudentLoginResponse, SECRET_KEY, ALGORITHM
-from AdminSchema import Query as AdminQuery, Mutation as AdminMutation, db as admin_db, Admin as AdminType, AdminInput as AdminInputType
+from AdminSchema import (
+    Query as AdminQuery, 
+    Mutation as AdminMutation, 
+    db as admin_db, 
+    Admin as AdminType, 
+    AdminInput as AdminInputType,
+    AdminLoginResponse
+)
 from contextlib import asynccontextmanager
 import typing
 
@@ -56,7 +63,7 @@ class Query:
 
     # Admin queries
     @strawberry.field
-    async def login_admin(self, email: str, password: str) -> AdminType:
+    async def login_admin(self, email: str, password: str) -> AdminLoginResponse:
         return await AdminQuery().login_admin(email, password)
 
 @strawberry.type

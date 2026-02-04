@@ -13,7 +13,7 @@ from datetime import timedelta
 # Initialize Prisma client
 db = Prisma()
 # JWT Configuration
-SECRET_KEY = "skill_shift fyp project"  # Change this to a secure secret key
+SECRET_KEY = "your-secret-key-here-change-in-production"  # Change this to a secure secret key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
@@ -76,6 +76,7 @@ class UserInfo:
     first_name: str
     last_name: str
     email: str
+    role: str
     profile_image: Optional[str]
     
 
@@ -206,7 +207,8 @@ class Mutation:
                 "sub": str(student.id),
                 "email": student.email,
                 "first_name": student.first_name,
-                "last_name": student.last_name
+                "last_name": student.last_name,
+                "role": "student" 
             }
             access_token = create_access_token(data=token_data)
             
@@ -216,6 +218,7 @@ class Mutation:
                 first_name=student.first_name,
                 last_name=student.last_name,
                 email=student.email,
+                role="student", 
                 profile_image=student.profile_image
             )
             

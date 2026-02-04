@@ -5,10 +5,15 @@ from fastapi import HTTPException
 import bcrypt
 import re
 import datetime
+import jwt
+from datetime import timedelta
 
 
 # Initialize Prisma client
 db = Prisma()
+SECRET_KEY = "your-secret-key-here-change-in-production"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
 email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
 def validate_password(password: str):
@@ -24,6 +29,15 @@ def validate_password(password: str):
 def validate_email(email: str):
     if not re.match(email_regex, email):
         raise ValueError("Invalid email format")
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
 @strawberry.type
@@ -41,6 +55,18 @@ class Admin:
     password_last_change: Optional[str]
     created_at: str
     updated_at: str
+@strawberry.type
+class AdminLoginResponse:
+    token: str
+    user: "AdminUserInfo"
+@strawberry.type
+class AdminUserInfo:
+    admin_id: int
+    first_name: str
+    last_name: str
+    email: str
+    role: str
+    profile_image: Optional[str]
 
 
 @strawberry.input
@@ -58,7 +84,7 @@ class AdminInput:
 @strawberry.type
 class Query:
     @strawberry.field
-    async def login_admin(self, email: str, password: str) -> Admin:
+    async def login_admin(self, email: str, password: str) -> AdminLoginResponse:
         try:
             admin = await db.admin.find_unique(where={"email": email})
             if not admin:
@@ -73,11 +99,34 @@ class Query:
                 )
             except Exception:
                 raise HTTPException(status_code=400, detail=f"Error updating last_login:{str(e)}")
-            return admin
+            
+            # Create JWT token with basic admin information and role
+            token_data = {
+                "sub": str(admin.admin_id),
+                "email": admin.email,
+                "first_name": admin.first_name,
+                "last_name": admin.last_name,
+                "role": "admin"  # Added role field
+            }
+            access_token = create_access_token(data=token_data)
+            
+            # Create admin user info object
+            admin_user_info = AdminUserInfo(
+                admin_id=admin.admin_id,
+                first_name=admin.first_name,
+                last_name=admin.last_name,
+                email=admin.email,
+                role="admin",  # Added role field
+                profile_image=admin.profile_image
+            )
+            
+            return AdminLoginResponse(token=access_token, user=admin_user_info)
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
 
 
 @strawberry.type
@@ -97,9 +146,9 @@ class Mutation:
                     "last_name": input.last_name,
                     "email": input.email,
                     "password": hashed.decode('utf-8'),
-                    "phone_number": input.phone_number,
+                    "phone_number": input.phone_number if input.phone_number else None,
                     "profile_image": input.profile_image,
-                    "account_status": input.account_status,
+                    "account_status": input.account_status if input.account_status else "active",
                     "email_verified": input.email_verified if input.email_verified is not None else False,
                 }
             )

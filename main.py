@@ -58,8 +58,14 @@ class Query:
         return await StudentQuery().get_student(id)
 
     @strawberry.field
-    async def list_students(self) -> typing.List[StudentType]:
-        return await StudentQuery().list_students()
+    async def list_students(
+        self,
+        page: int = 1,
+        per_page: int = 10,
+        sort_field: str = "id",
+        sort_order: str = "asc",
+    ) -> typing.List[StudentType]:
+        return await StudentQuery().list_students(page=page, per_page=per_page, sort_field=sort_field, sort_order=sort_order)
 
     # Admin queries
     @strawberry.field

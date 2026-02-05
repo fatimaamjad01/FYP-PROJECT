@@ -1,4 +1,4 @@
-import strawberry
+import  strawberry
 from prisma import Prisma
 from typing import Optional
 from fastapi import HTTPException

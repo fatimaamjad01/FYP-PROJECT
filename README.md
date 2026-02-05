@@ -26,31 +26,33 @@ Learning Management System (LMS) backend with Student management, Instructor pro
 ```bash
 # 1. Clone repository
 git clone https://github.com/fatimaamjad01/FYP-PROJECT.git
+
+# 2. Navigate to project root folder
 cd FYP-PROJECT
 
-# 2. Create virtual environment
+# 3. Create virtual environment
 python -m venv .venv
 
-# 3. Activate virtual environment
+# 4. Activate virtual environment
 source .venv/bin/activate          # Linux/macOS
 .venv\Scripts\Activate.ps1         # Windows PowerShell
 
-# 4. Install dependencies
+# 5. Install dependencies
 pip install -r requirements.txt
 npm install
 
-# 5. Create .env file with your Supabase credentials
+# 6. Create .env file with your Supabase credentials
 # DATABASE_URL="postgresql://..."
 # DIRECT_URL="postgresql://..."
 
-# 6. Setup database
+# 7. Setup database
 prisma generate
 prisma db push
 
-# 7. Run server
+# 8. Run server
 uvicorn main:app --reload
 
-# 8. Open GraphQL Playground
+# 9. Open GraphQL Playground
 # Visit: http://localhost:8000/graphql
 ```
 
@@ -58,6 +60,33 @@ uvicorn main:app --reload
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+## 📂 Navigation
+
+To navigate to the project root folder, use these commands:
+
+**If you haven't cloned the repository yet:**
+```bash
+git clone https://github.com/fatimaamjad01/FYP-PROJECT.git
+cd FYP-PROJECT
+```
+
+**If you're already in a subdirectory of the project:**
+```bash
+# Navigate to project root from any subdirectory
+cd /path/to/FYP-PROJECT
+
+# Or use relative path to go up directories
+cd ..              # Go up one directory
+cd ../..           # Go up two directories
+```
+
+**To verify you're in the project root:**
+```bash
+pwd                # Print current directory (Linux/macOS)
+cd                 # Print current directory (Windows CMD)
+ls                 # List files (should see main.py, README.md, etc.)
 ```
 
 ## 📚 GraphQL API

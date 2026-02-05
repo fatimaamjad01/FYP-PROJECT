@@ -20,6 +20,7 @@ pydantic==2.10.0          # Data validation using Python type annotations
 
 # Security & Authentication
 bcrypt==4.2.1             # Password hashing
+PyJWT==2.9.0              # JWT encoding/decoding
 
 # Configuration Management
 python-dotenv==1.0.1      # Load environment variables from .env file

@@ -93,11 +93,46 @@ class Query:
         return student
 
     @strawberry.field
-    async def list_students(self) -> typing.List[Student]:
+    async def list_students(
+        self,
+        page: int = 1,
+        per_page: int = 10,
+        sort_field: str = "id",
+        sort_order: str = "asc",
+    ) -> typing.List[Student]:
+        
+        # Normalize pagination parameters to sensible defaults
+        if page < 1:
+            page = 1
+        if per_page < 1:
+            per_page = 10
+        skip = (page - 1) * per_page
+
+        # Define allowed fields for sorting to prevent arbitrary SQL injection
+        allowed_sort_fields = {
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "created_at",
+            "updated_at",
+        }
+        # Fallback to 'id' if the provided field isn't valid
+        field = sort_field if sort_field in allowed_sort_fields else "id"
+        direction = sort_order.lower() if sort_order.lower() in {"asc", "desc"} else "asc"
+
+        # Compose the order argument for Prisma. If no sorting is desired, omit
+        order: typing.Optional[dict] = {field: direction}
+
         try:
-            students = await db.student.find_many()
+            students = await db.student.find_many(
+                skip=skip,
+                take=per_page,
+                order=order,
+            )
             return students
         except Exception as e:
+            # Bubble up a generic error message; log internal details for debugging
             print("DB ERROR:", e)
             raise Exception(f"An error occurred: {str(e)}")
 

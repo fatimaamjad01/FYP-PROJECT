@@ -85,7 +85,7 @@ cd ../..           # Go up two directories
 **To verify you're in the project root:**
 ```bash
 pwd                # Print current directory (Linux/macOS)
-cd                 # Print current directory (Windows CMD)
+echo %CD%          # Print current directory (Windows CMD)
 ls                 # List files (should see main.py, README.md, etc.)
 ```
 

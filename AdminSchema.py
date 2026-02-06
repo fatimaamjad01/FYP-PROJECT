@@ -2,11 +2,13 @@ import strawberry
 from prisma import Prisma
 from typing import Optional
 from fastapi import HTTPException
+import typing
 import bcrypt
 import re
 import datetime
 import jwt
 from datetime import timedelta
+from InstructorSchema import Instructor as InstructorType
 
 
 # Initialize Prisma client
@@ -32,9 +34,9 @@ def validate_email(email: str):
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.datetime.utcnow() + expires_delta
+        expire = datetime.datetime.now(datetime.timezone.utc) + expires_delta
     else:
-        expire = datetime.datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -123,6 +125,43 @@ class Query:
             return AdminLoginResponse(token=access_token, user=admin_user_info)
         except HTTPException:
             raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+    @strawberry.field
+    async def list_instructors(
+        self,
+        page: int = 1,
+        per_page: int = 10,
+        sort_field: str = "instructor_id",
+        sort_order: str = "asc",
+    ) -> typing.List[InstructorType]:
+        if page < 1:
+            page = 1
+        if per_page < 1:
+            per_page = 10
+        skip = (page - 1) * per_page
+
+        allowed_sort_fields = {
+            "instructor_id",
+            "first_name",
+            "last_name",
+            "email",
+            "account_status",
+            "created_at",
+            "updated_at",
+        }
+        field = sort_field if sort_field in allowed_sort_fields else "instructor_id"
+        direction = sort_order.lower() if sort_order.lower() in {"asc", "desc"} else "asc"
+        order: typing.Optional[dict] = {field: direction}
+
+        try:
+            instructors = await db.instructor.find_many(
+                skip=skip,
+                take=per_page,
+                order=order,
+            )
+            return instructors
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 

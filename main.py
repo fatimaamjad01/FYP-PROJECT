@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from strawberry.fastapi import GraphQLRouter
 import strawberry
 import jwt
-from schema import Query as StudentQuery, Mutation as StudentMutation, db as student_db, Student as StudentType, StudentInput as StudentInputType, LoginResponse as StudentLoginResponse, SECRET_KEY, ALGORITHM
+from StudentSchema import Query as StudentQuery, Mutation as StudentMutation, db as student_db, Student as StudentType, StudentInput as StudentInputType, LoginResponse as StudentLoginResponse, SECRET_KEY, ALGORITHM
 from AdminSchema import (
     Query as AdminQuery, 
     Mutation as AdminMutation, 
@@ -11,6 +11,16 @@ from AdminSchema import (
     Admin as AdminType, 
     AdminInput as AdminInputType,
     AdminLoginResponse
+)
+from InstructorSchema import (
+    Query as InstructorQuery,
+    Mutation as InstructorMutation,
+    db as instructor_db,
+    Instructor as InstructorType,
+    InstructorInput as InstructorInputType,
+    InstructorLoginResponse,
+    Course as CourseType,
+    CourseInput as CourseInputType,
 )
 from contextlib import asynccontextmanager
 import typing
@@ -40,12 +50,14 @@ async def lifespan(app: FastAPI):
     # Connect to the database when the app starts
     await student_db.connect()
     await admin_db.connect()
+    await instructor_db.connect()
 
     # Disconnect from the database when the app shuts down
     yield
 
     await student_db.disconnect()
     await admin_db.disconnect()
+    await instructor_db.disconnect()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -72,6 +84,41 @@ class Query:
     async def login_admin(self, email: str, password: str) -> AdminLoginResponse:
         return await AdminQuery().login_admin(email, password)
 
+    @strawberry.field
+    async def list_instructors(
+        self,
+        page: int = 1,
+        per_page: int = 10,
+        sort_field: str = "instructor_id",
+        sort_order: str = "asc",
+    ) -> typing.List[InstructorType]:
+        return await AdminQuery().list_instructors(
+            page=page,
+            per_page=per_page,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        )
+
+    # Instructor queries
+    @strawberry.field
+    async def login_instructor(self, email: str, password: str) -> InstructorLoginResponse:
+        return await InstructorQuery().login_instructor(email, password)
+
+    @strawberry.field
+    async def list_courses(
+        self,
+        page: int = 1,
+        per_page: int = 10,
+        sort_field: str = "course_id",
+        sort_order: str = "asc",
+    ) -> typing.List[CourseType]:
+        return await InstructorQuery().list_courses(
+            page=page,
+            per_page=per_page,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        )
+
 @strawberry.type
 class Mutation:
     # Student mutations
@@ -95,6 +142,23 @@ class Mutation:
     @strawberry.mutation
     async def update_admin(self, admin_id: int, input: AdminInputType) -> AdminType:
         return await AdminMutation().update_admin(admin_id, input)
+
+    # Instructor mutations
+    @strawberry.mutation
+    async def register_instructor(self, input: InstructorInputType) -> InstructorType:
+        return await InstructorMutation().register_instructor(input)
+
+    @strawberry.mutation
+    async def update_instructor(self, instructor_id: int, input: InstructorInputType) -> InstructorType:
+        return await InstructorMutation().update_instructor(instructor_id, input)
+
+    @strawberry.mutation
+    async def create_course(self, input: CourseInputType) -> CourseType:
+        return await InstructorMutation().create_course(input)
+
+    @strawberry.mutation
+    async def update_course(self, course_id: int, input: CourseInputType) -> CourseType:
+        return await InstructorMutation().update_course(course_id, input)
 
 # Create the GraphQL schema using combined Query and Mutation
 schema = strawberry.Schema(query=Query, mutation=Mutation)

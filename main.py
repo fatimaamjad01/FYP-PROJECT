@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware  
 from strawberry.fastapi import GraphQLRouter
 import strawberry
 import jwt
@@ -61,6 +62,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Your React app origin
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 @strawberry.type
 class Query:
@@ -78,6 +86,10 @@ class Query:
         sort_order: str = "asc",
     ) -> typing.List[StudentType]:
         return await StudentQuery().list_students(page=page, per_page=per_page, sort_field=sort_field, sort_order=sort_order)
+
+    @strawberry.field
+    async def login_student(self, email: str, password: str) -> StudentLoginResponse:
+        return await StudentQuery().login_student(email, password)
 
     # Admin queries
     @strawberry.field
@@ -129,10 +141,6 @@ class Mutation:
     @strawberry.mutation
     async def update_student(self, id: int, input: StudentInputType) -> StudentType:
         return await StudentMutation().update_student(id, input)
-
-    @strawberry.mutation
-    async def login_student(self, email: str, password: str) -> StudentLoginResponse:
-        return await StudentMutation().login_student(email, password)
 
     # Admin mutations
     @strawberry.mutation

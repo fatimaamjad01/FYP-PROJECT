@@ -136,6 +136,47 @@ class Query:
             print("DB ERROR:", e)
             raise Exception(f"An error occurred: {str(e)}")
 
+    @strawberry.field
+    async def login_student(self, email: str, password: str) -> LoginResponse:
+        try:
+            student = await db.student.find_unique(where={"email": email})
+            if not student:
+                raise HTTPException(status_code=401, detail="Invalid email or password")
+            # Verify password
+            if not bcrypt.checkpw(password.encode("utf-8"), student.password.encode("utf-8")):
+                raise HTTPException(status_code=401, detail="Invalid email or password")
+
+            # Update last_login timestamp (best-effort, ignore update errors)
+            try:
+                await db.student.update(
+                    where={"id": student.id},
+                    data={"last_login": datetime.datetime.now(datetime.timezone.utc).isoformat()},
+                )
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Error updating last_login:{str(e)}")
+
+            token_data = {
+                "sub": str(student.id),
+                "email": student.email,
+                "first_name": student.first_name,
+                "last_name": student.last_name,
+                "role": "student",
+            }
+            access_token = create_access_token(data=token_data)
+
+            user_info = UserInfo(
+                id=student.id,
+                first_name=student.first_name,
+                last_name=student.last_name,
+                email=student.email,
+                role="student",
+                profile_image=student.profile_image,
+            )
+
+            return LoginResponse(token=access_token, user=user_info)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
 @strawberry.input
 class StudentInput:
     first_name: str
@@ -218,45 +259,4 @@ class Mutation:
             raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
         except Exception as e:
             # Catch any other errors
-            raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-    
-    @strawberry.mutation
-    async def login_student(self, email: str, password: str) -> LoginResponse:
-        try:
-            student = await db.student.find_unique(where={"email": email})
-            if not student:
-                raise HTTPException(status_code=401, detail="Invalid email or password")
-            # Verify password
-            if not bcrypt.checkpw(password.encode('utf-8'), student.password.encode('utf-8')):
-                raise HTTPException(status_code=401, detail="Invalid email or password")
-            # Update last_login timestamp (best-effort, ignore update errors)
-            try:
-                await db.student.update(
-                    where={"id": student.id},
-                    data={"last_login": datetime.datetime.now(datetime.timezone.utc).isoformat()}
-                )
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Error updating last_login:{str(e)}")
-            
-            token_data = {
-                "sub": str(student.id),
-                "email": student.email,
-                "first_name": student.first_name,
-                "last_name": student.last_name,
-                "role": "student" 
-            }
-            access_token = create_access_token(data=token_data)
-            
-            # Create user info object
-            user_info = UserInfo(
-                id=student.id,
-                first_name=student.first_name,
-                last_name=student.last_name,
-                email=student.email,
-                role="student", 
-                profile_image=student.profile_image
-            )
-            
-            return LoginResponse(token=access_token, user=user_info)
-        except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")

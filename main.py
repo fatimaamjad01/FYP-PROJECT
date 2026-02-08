@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
 import strawberry
 import jwt
-from StudentSchema import Query as StudentQuery, Mutation as StudentMutation, db as student_db, Student as StudentType, StudentInput as StudentInputType, LoginResponse as StudentLoginResponse, SECRET_KEY, ALGORITHM
+from StudentSchema import Query as StudentQuery, Mutation as StudentMutation, db as student_db, Student as StudentType, StudentInput as StudentInputType, LoginResponse as StudentLoginResponse, StudentPaginatedResponse, SECRET_KEY, ALGORITHM
 from AdminSchema import (
     Query as AdminQuery, 
     Mutation as AdminMutation, 
@@ -22,6 +22,7 @@ from InstructorSchema import (
     InstructorInput as InstructorInputType,
     InstructorLoginResponse,
     Course as CourseType,
+    CoursePaginatedResponse,
     CourseInput as CourseInputType,
 )
 from contextlib import asynccontextmanager
@@ -85,8 +86,15 @@ class Query:
         per_page: int = 10,
         sort_field: str = "id",
         sort_order: str = "asc",
-    ) -> typing.List[StudentType]:
-        return await StudentQuery().list_students(page=page, per_page=per_page, sort_field=sort_field, sort_order=sort_order)
+        search: typing.Optional[str] = None,
+    ) -> StudentPaginatedResponse:
+        return await StudentQuery().list_students(
+            page=page,
+            per_page=per_page,
+            sort_field=sort_field,
+            sort_order=sort_order,
+            search=search,
+        )
 
     @strawberry.field
     async def login_student(self, email: str, password: str) -> StudentLoginResponse:
@@ -145,12 +153,14 @@ class Query:
         per_page: int = 10,
         sort_field: str = "course_id",
         sort_order: str = "asc",
-    ) -> typing.List[CourseType]:
+        search: typing.Optional[str] = None,
+    ) -> CoursePaginatedResponse:
         return await InstructorQuery().list_courses(
             page=page,
             per_page=per_page,
             sort_field=sort_field,
             sort_order=sort_order,
+            search=search,
         )
 
 @strawberry.type

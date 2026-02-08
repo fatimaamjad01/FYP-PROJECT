@@ -113,6 +113,13 @@ class Course:
 	updated_at: str
 
 
+@strawberry.type
+class CoursePaginatedResponse:
+	courses: typing.List[Course]
+	total_count: int
+	filtered_count: int
+
+
 @strawberry.input
 class InstructorInput:
 	first_name: str
@@ -205,7 +212,8 @@ class Query:
 		per_page: int = 10,
 		sort_field: str = "course_id",
 		sort_order: str = "asc",
-	) -> typing.List[Course]:
+		search: typing.Optional[str] = None,
+	) -> CoursePaginatedResponse:
 		if page < 1:
 			page = 1
 		if per_page < 1:
@@ -224,12 +232,31 @@ class Query:
 		order: typing.Optional[dict] = {field: direction}
 
 		try:
+			where_clause = {}
+			if search:
+				where_clause = {
+					"OR": [
+						{"course_title": {"contains": search, "mode": "insensitive"}},
+						{"course_status": {"contains": search, "mode": "insensitive"}},
+						{"course_level": {"contains": search, "mode": "insensitive"}},
+						{"course_language": {"contains": search, "mode": "insensitive"}},
+					],
+				}
+
+			total_count = await db.course.count()
+			filtered_count = await db.course.count(where=where_clause if where_clause else None)
+
 			courses = await db.course.find_many(
+				where=where_clause if where_clause else None,
 				skip=skip,
 				take=per_page,
 				order=order,
 			)
-			return courses
+			return CoursePaginatedResponse(
+				courses=courses,
+				total_count=total_count,
+				filtered_count=filtered_count,
+			)
 		except Exception as e:
 			raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 

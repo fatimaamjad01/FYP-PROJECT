@@ -78,6 +78,13 @@ class UserInfo:
     email: str
     role: str
     profile_image: Optional[str]
+
+
+@strawberry.type
+class StudentPaginatedResponse:
+    students: typing.List[Student]
+    total_count: int
+    filtered_count: int
     
 
 
@@ -99,7 +106,8 @@ class Query:
         per_page: int = 10,
         sort_field: str = "id",
         sort_order: str = "asc",
-    ) -> typing.List[Student]:
+        search: typing.Optional[str] = None,
+    ) -> StudentPaginatedResponse:
         
         # Normalize pagination parameters to sensible defaults
         if page < 1:
@@ -125,12 +133,30 @@ class Query:
         order: typing.Optional[dict] = {field: direction}
 
         try:
+            where_clause = {}
+            if search:
+                where_clause = {
+                    "OR": [
+                        {"first_name": {"contains": search, "mode": "insensitive"}},
+                        {"last_name": {"contains": search, "mode": "insensitive"}},
+                        {"email": {"contains": search, "mode": "insensitive"}},
+                    ]
+                }
+
+            total_count = await db.student.count()
+            filtered_count = await db.student.count(where=where_clause if where_clause else None)
+
             students = await db.student.find_many(
+                where=where_clause if where_clause else None,
                 skip=skip,
                 take=per_page,
                 order=order,
             )
-            return students
+            return StudentPaginatedResponse(
+                students=students,
+                total_count=total_count,
+                filtered_count=filtered_count,
+            )
         except Exception as e:
             # Bubble up a generic error message; log internal details for debugging
             print("DB ERROR:", e)

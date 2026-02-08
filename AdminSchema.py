@@ -82,7 +82,7 @@ class AdminInput:
     first_name: str
     last_name: str
     email: str
-    password: str
+    password: Optional[str] = None
     phone_number: Optional[str] = None
     profile_image: Optional[str] = None
     account_status: Optional[str] = None
@@ -201,6 +201,21 @@ class Query:
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
     @strawberry.field
+    async def get_admin(self, admin_id: int) -> Admin:
+        """
+        Get a single admin by ID
+        """
+        try:
+            admin = await db.admin.find_unique(where={"admin_id": admin_id})
+            if not admin:
+                raise HTTPException(status_code=404, detail=f"Admin with ID {admin_id} not found")
+            return admin
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+    @strawberry.field
     async def list_instructors(
         self,
         page: int = 1,
@@ -245,12 +260,25 @@ class Mutation:
     @strawberry.mutation
     async def register_admin(self, input: AdminInput) -> Admin:
         try:
+            # Validate email
             validate_email(input.email)
+            
+            # Ensure password is provided for registration
+            if not input.password or not input.password.strip():
+                raise ValueError("Password is required for registration")
+            
+            # Validate password strength
             validate_password(input.password)
+            
+            # Check if email already exists
             existing = await db.admin.find_unique(where={"email": input.email})
             if existing:
                 raise ValueError(f"Email {input.email} is already registered")
+            
+            # Hash the password
             hashed = bcrypt.hashpw(input.password.encode('utf-8'), bcrypt.gensalt())
+            
+            # Create the admin
             admin = await db.admin.create(
                 data={
                     "first_name": input.first_name,
@@ -272,28 +300,47 @@ class Mutation:
     @strawberry.mutation
     async def update_admin(self, admin_id: int, input: AdminInput) -> Admin:
         try:
-            validate_email(input.email)
-            # hash password if provided
-            if input.password:
-                validate_password(input.password)
-                hashed = bcrypt.hashpw(input.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            else:
-                hashed = None
+            # Check if admin exists
             existing = await db.admin.find_unique(where={"admin_id": admin_id})
             if not existing:
                 raise HTTPException(status_code=404, detail=f"Admin with ID {admin_id} not found")
+            
+            # Validate email
+            validate_email(input.email)
+            
+            # Build update data dictionary dynamically
+            update_data = {
+                "first_name": input.first_name,
+                "last_name": input.last_name,
+                "email": input.email,
+            }
+            
+            # Only update phone_number if provided
+            if input.phone_number is not None:
+                update_data["phone_number"] = input.phone_number
+            
+            # Only update profile_image if provided
+            if input.profile_image is not None:
+                update_data["profile_image"] = input.profile_image
+            
+            # Only update account_status if provided
+            if input.account_status is not None:
+                update_data["account_status"] = input.account_status
+            
+            # Only update email_verified if provided
+            if input.email_verified is not None:
+                update_data["email_verified"] = input.email_verified
+            
+            # Hash and update password only if provided and not empty
+            if input.password and input.password.strip():
+                validate_password(input.password)
+                hashed = bcrypt.hashpw(input.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                update_data["password"] = hashed
+            
+            # Perform the update
             updated = await db.admin.update(
                 where={"admin_id": admin_id},
-                data={
-                    "first_name": input.first_name if hasattr(input, 'first_name') else existing.first_name,
-                    "last_name": input.last_name if hasattr(input, 'last_name') else existing.last_name,
-                    "email": input.email if hasattr(input, 'email') else existing.email,
-                    "phone_number": input.phone_number if hasattr(input, 'phone_number') else existing.phone_number,
-                    "profile_image": input.profile_image if hasattr(input, 'profile_image') else existing.profile_image,
-                    "email_verified": input.email_verified if hasattr(input, 'email_verified') else existing.email_verified,
-                    "account_status": input.account_status if hasattr(input, 'account_status') else existing.account_status,
-                    "password": hashed if hashed else existing.password,
-                }
+                data=update_data
             )
             return updated
         except ValueError as e:

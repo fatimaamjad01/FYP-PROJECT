@@ -115,6 +115,10 @@ class Query:
         )
 
     @strawberry.field
+    async def get_admin(self, admin_id: int) -> AdminType:
+        return await AdminQuery().get_admin(admin_id)
+
+    @strawberry.field
     async def list_instructors(
         self,
         page: int = 1,

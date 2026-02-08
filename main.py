@@ -11,7 +11,8 @@ from AdminSchema import (
     db as admin_db, 
     Admin as AdminType, 
     AdminInput as AdminInputType,
-    AdminLoginResponse
+    AdminLoginResponse,
+    AdminPaginatedResponse
 )
 from InstructorSchema import (
     Query as InstructorQuery,
@@ -95,6 +96,23 @@ class Query:
     @strawberry.field
     async def login_admin(self, email: str, password: str) -> AdminLoginResponse:
         return await AdminQuery().login_admin(email, password)
+
+    @strawberry.field
+    async def list_admins_paginated(
+        self,
+        page: int = 1,
+        per_page: int = 10,
+        sort_field: str = "admin_id",
+        sort_order: str = "asc",
+        search: typing.Optional[str] = None,
+    ) -> AdminPaginatedResponse:
+        return await AdminQuery().list_admins_paginated(
+            page=page,
+            per_page=per_page,
+            sort_field=sort_field,
+            sort_order=sort_order,
+            search=search
+        )
 
     @strawberry.field
     async def list_instructors(

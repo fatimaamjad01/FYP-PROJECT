@@ -70,6 +70,12 @@ class AdminUserInfo:
     role: str
     profile_image: Optional[str]
 
+@strawberry.type
+class AdminPaginatedResponse:
+    admins: typing.List[Admin]
+    total_count: int
+    filtered_count: int
+
 
 @strawberry.input
 class AdminInput:
@@ -125,6 +131,72 @@ class Query:
             return AdminLoginResponse(token=access_token, user=admin_user_info)
         except HTTPException:
             raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+    @strawberry.field
+    async def list_admins_paginated(
+        self,
+        page: int = 1,
+        per_page: int = 10,
+        sort_field: str = "admin_id",
+        sort_order: str = "asc",
+        search: typing.Optional[str] = None,
+    ) -> AdminPaginatedResponse:
+        """
+        Get paginated list of admins with optional search filter on name or email
+        """
+        if page < 1:
+            page = 1
+        if per_page < 1:
+            per_page = 10
+        skip = (page - 1) * per_page
+
+        # Validate sort field
+        allowed_sort_fields = {
+            "admin_id",
+            "first_name",
+            "last_name",
+            "email",
+            "account_status",
+            "created_at",
+            "updated_at",
+        }
+        field = sort_field if sort_field in allowed_sort_fields else "admin_id"
+        direction = sort_order.lower() if sort_order.lower() in {"asc", "desc"} else "asc"
+        order: typing.Optional[dict] = {field: direction}
+
+        try:
+            # Build where clause for search
+            where_clause = {}
+            if search:
+                where_clause = {
+                    "OR": [
+                        {"first_name": {"contains": search, "mode": "insensitive"}},
+                        {"last_name": {"contains": search, "mode": "insensitive"}},
+                        {"email": {"contains": search, "mode": "insensitive"}},
+                    ]
+                }
+
+            # Get total count (without filters)
+            total_count = await db.admin.count()
+
+            # Get filtered count (with search filter)
+            filtered_count = await db.admin.count(where=where_clause if where_clause else None)
+
+            # Get paginated admins
+            admins = await db.admin.find_many(
+                where=where_clause if where_clause else None,
+                skip=skip,
+                take=per_page,
+                order=order,
+            )
+
+            return AdminPaginatedResponse(
+                admins=admins,
+                total_count=total_count,
+                filtered_count=filtered_count
+            )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 

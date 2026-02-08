@@ -8,7 +8,7 @@ import re
 import datetime
 import jwt
 from datetime import timedelta
-from InstructorSchema import Instructor as InstructorType
+from InstructorSchema import Instructor as InstructorType, InstructorPaginatedResponse
 
 
 # Initialize Prisma client
@@ -222,7 +222,8 @@ class Query:
         per_page: int = 10,
         sort_field: str = "instructor_id",
         sort_order: str = "asc",
-    ) -> typing.List[InstructorType]:
+        search: typing.Optional[str] = None,
+    ) -> InstructorPaginatedResponse:
         if page < 1:
             page = 1
         if per_page < 1:
@@ -243,12 +244,30 @@ class Query:
         order: typing.Optional[dict] = {field: direction}
 
         try:
+            where_clause = {}
+            if search:
+                where_clause = {
+                    "OR": [
+                        {"first_name": {"contains": search, "mode": "insensitive"}},
+                        {"last_name": {"contains": search, "mode": "insensitive"}},
+                        {"email": {"contains": search, "mode": "insensitive"}},
+                    ],
+                }
+
+            total_count = await db.instructor.count()
+            filtered_count = await db.instructor.count(where=where_clause if where_clause else None)
+
             instructors = await db.instructor.find_many(
+                where=where_clause if where_clause else None,
                 skip=skip,
                 take=per_page,
                 order=order,
             )
-            return instructors
+            return InstructorPaginatedResponse(
+                instructors=instructors,
+                total_count=total_count,
+                filtered_count=filtered_count,
+            )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 

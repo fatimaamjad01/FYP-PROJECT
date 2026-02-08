@@ -91,6 +91,13 @@ class InstructorUserInfo:
 
 
 @strawberry.type
+class InstructorPaginatedResponse:
+	instructors: typing.List[Instructor]
+	total_count: int
+	filtered_count: int
+
+
+@strawberry.type
 class Course:
 	course_id: int
 	course_title: str
@@ -202,6 +209,62 @@ class Query:
 			return InstructorLoginResponse(token=access_token, user=user_info)
 		except HTTPException:
 			raise
+		except Exception as e:
+			raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+	@strawberry.field
+	async def list_instructors(
+		self,
+		page: int = 1,
+		per_page: int = 10,
+		sort_field: str = "instructor_id",
+		sort_order: str = "asc",
+		search: typing.Optional[str] = None,
+	) -> InstructorPaginatedResponse:
+		if page < 1:
+			page = 1
+		if per_page < 1:
+			per_page = 10
+		skip = (page - 1) * per_page
+
+		allowed_sort_fields = {
+			"instructor_id",
+			"first_name",
+			"last_name",
+			"email",
+			"account_status",
+			"created_at",
+			"updated_at",
+		}
+		field = sort_field if sort_field in allowed_sort_fields else "instructor_id"
+		direction = sort_order.lower() if sort_order.lower() in {"asc", "desc"} else "asc"
+		order: typing.Optional[dict] = {field: direction}
+
+		try:
+			where_clause = {}
+			if search:
+				where_clause = {
+					"OR": [
+						{"first_name": {"contains": search, "mode": "insensitive"}},
+						{"last_name": {"contains": search, "mode": "insensitive"}},
+						{"email": {"contains": search, "mode": "insensitive"}},
+					],
+				}
+
+			total_count = await db.instructor.count()
+			filtered_count = await db.instructor.count(where=where_clause if where_clause else None)
+
+			instructors = await db.instructor.find_many(
+				where=where_clause if where_clause else None,
+				skip=skip,
+				take=per_page,
+				order=order,
+			)
+			return InstructorPaginatedResponse(
+				instructors=instructors,
+				total_count=total_count,
+				filtered_count=filtered_count,
+			)
 		except Exception as e:
 			raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 

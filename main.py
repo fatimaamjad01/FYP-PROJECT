@@ -19,6 +19,7 @@ from InstructorSchema import (
     Mutation as InstructorMutation,
     db as instructor_db,
     Instructor as InstructorType,
+    InstructorPaginatedResponse,
     InstructorInput as InstructorInputType,
     InstructorLoginResponse,
     Course as CourseType,
@@ -133,12 +134,14 @@ class Query:
         per_page: int = 10,
         sort_field: str = "instructor_id",
         sort_order: str = "asc",
-    ) -> typing.List[InstructorType]:
+        search: typing.Optional[str] = None,
+    ) -> InstructorPaginatedResponse:
         return await AdminQuery().list_instructors(
             page=page,
             per_page=per_page,
             sort_field=sort_field,
             sort_order=sort_order,
+            search=search,
         )
 
     # Instructor queries

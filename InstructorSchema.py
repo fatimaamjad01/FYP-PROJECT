@@ -213,6 +213,18 @@ class Query:
 			raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 	@strawberry.field
+	async def get_instructor(self, instructor_id: int) -> Instructor:
+		try:
+			instructor = await db.instructor.find_unique(where={"instructor_id": instructor_id})
+			if not instructor:
+				raise HTTPException(status_code=404, detail=f"Instructor with ID {instructor_id} not found")
+			return instructor
+		except HTTPException:
+			raise
+		except Exception as e:
+			raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+	@strawberry.field
 	async def list_instructors(
 		self,
 		page: int = 1,

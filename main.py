@@ -144,6 +144,10 @@ class Query:
             search=search,
         )
 
+    @strawberry.field
+    async def get_instructor(self, instructor_id: int) -> InstructorType:
+        return await InstructorQuery().get_instructor(instructor_id)
+
     # Instructor queries
     @strawberry.field
     async def login_instructor(self, email: str, password: str) -> InstructorLoginResponse:
